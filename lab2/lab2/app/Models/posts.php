@@ -9,4 +9,8 @@ class posts extends Model
 {
     use HasFactory;
     protected $fillable = ['title', 'body', 'image', 'author'];
+
+    function Author(){
+        
+    }
 }

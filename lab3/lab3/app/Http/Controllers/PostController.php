@@ -2,10 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\storeRequest;
+use App\Http\Requests\updateRequest;
+use Illuminate\Support\Str;
+use App\Models\Comment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\posts;
 use App\Models\User;
+use COM;
+
+
 class PostController extends Controller
 {
     
@@ -21,15 +28,22 @@ class PostController extends Controller
 
     public function index()
     {
-        $posts = posts::paginate(1);
+        
+        $posts = posts::paginate(10);
         return view('index', ["posts" => $posts]);
     }
 
     public function show($id)
     {
         $post = posts::findOrFail($id);
-         return view('show', ["post" => $post]);
+        return view('show', ["post" => $post]);
 
+    }
+
+    public function restore()
+    {
+       posts::onlyTrashed()->restore();
+       return to_route("posts.index");      
     }
 
     public function create()
@@ -38,16 +52,23 @@ class PostController extends Controller
         return view('create', ["authors"=>$users]);
 
     }
-    public function store(){
+    public function store(storeRequest $request){
         
-        $request_parms = request();
-        $file_path = $this->file_operations($request_parms);
-        $request_parms = request()->all();
+        $validated = $request->validated();
+        $validated['slug'] = Str::slug($validated['title']);
+
+        unset($validated['slug']);
+        
+        $file_path = $this->file_operations($request);
+        $authorExists = User::where('id', $validated['author'])->exists();
+        if (!$authorExists) {
+            return redirect()->route('posts.create')->withErrors(['author_not_found' => 'Author not found.']);
+        }
         $Post = new posts();
-        $Post->title = $request_parms['title'];
-        $Post->body = $request_parms['body'];
+        $Post->title = $validated['title'];
+        $Post->body = $validated ['body'];
         $Post->image =  $file_path;
-        $Post->author = $request_parms['author'];;
+        $Post->author = $validated ['author'];;
         $Post->save();
         return to_route("posts.index");      
     }
@@ -58,19 +79,25 @@ class PostController extends Controller
         $authors= User::all();
         return view('edit',["post" => $post, "authors"=> $authors]);
     }
-    function update($id){
+    function update(updateRequest $request, $id){
+         
         $post = Posts::findOrFail($id);
-    
-        $request_params = request()->all();
-        $file_path = $this->file_operations(request());
+        $validated = $request->validated();
+        // $request_params = request()->all();
+
+        if (isset($validated['title'])) {
+            $validated['slug'] = Str::slug($validated['title']);
+        }
+        
+        $file_path = $this->file_operations($request);
     
         if ($file_path) {
             $post->image = $file_path;
         }
 
-        unset($request_params['image']);// remove the attribute 
+        unset($validated['image']);// remove the attribute 
 
-        $post->update($request_params);
+        $post->update($validated);
     
         return to_route("posts.show", $post);
     }
