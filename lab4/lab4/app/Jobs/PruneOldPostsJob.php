@@ -17,10 +17,8 @@ class PruneOldPostsJob implements ShouldQueue
 
     public function handle()
     {
-        // Calculate the timestamp for 1 hour ago
         $oneHourAgo = Carbon::now()->subHour();
 
-        // Delete posts older than 1 hour
         posts::where('created_at', '<', $oneHourAgo)->delete();
     }
 }

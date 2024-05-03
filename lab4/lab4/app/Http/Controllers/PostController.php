@@ -19,14 +19,13 @@ class PostController extends Controller
 {
     function __construct()
     {
-        $this->middleware('auth')->only('store','update','destory');
+        $this->middleware('auth')->only('store','update','destory','pruneOldPosts','showUserPosts');
         // $this->middleware('auth')->except('index','show');
     }
     public function pruneOldPosts()
     {
         PruneOldPostsJob::dispatch();
-        $posts = posts::paginate(10);
-        return view('index', ["posts" => $posts]);
+        return to_route("posts.index");   
     }
     private function file_operations($request){
 
