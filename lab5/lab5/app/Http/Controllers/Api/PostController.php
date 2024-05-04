@@ -16,6 +16,11 @@ use Illuminate\Validation\Rule;
 class PostController extends Controller
 {
 
+    function __construct()
+    {
+        $this->middleware('auth:sanctum')->except('show','index');
+    }
+
     private function file_operations($request){
 
         if($request->hasFile('image')){
@@ -53,7 +58,7 @@ class PostController extends Controller
         $Post = new posts();
         $Post->title = $validated['title'];
         $Post->body = $validated ['body'];
-        $Post->author = $validated ['author'];
+        $Post->author = Auth::id();
         $Post->image = $file_path;
         $Post->save();
         $Post->attachTags(['tag1', 'tag2', 'tag3']);
@@ -72,13 +77,27 @@ class PostController extends Controller
    public function update(updateRequest $request, posts $post)
    {
        $validated = $request->validated();
-   
+      
        if (isset($validated['title'])) {
            $validated['slug'] = Str::slug($validated['title']);
        }
+   
+       // Validate the request data
+       $validator = Validator::make($request->all(), $request->rules());
        
+       // Check if validation fails
+       if ($validator->fails()) {
+           return response()->json(
+               [
+                   'validation_errors' => $validator->errors(),
+                   'message' => 'Please review your post form data',
+                   'typealert' => 'danger'
+               ], 422
+           );
+       }
+   
        $file_path = $this->file_operations($request);
-           
+          
        if ($file_path) {
            $post->image = $file_path;
        }
@@ -86,10 +105,9 @@ class PostController extends Controller
        unset($validated['image']); // Remove the 'image' attribute 
    
        $post->update($validated);
-           
+          
        return response()->json(new PostResource($post), 200);
    }
-    
 
     public function destroy(posts $post)
     {

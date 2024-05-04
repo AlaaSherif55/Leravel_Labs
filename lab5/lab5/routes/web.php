@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use Laravel\Socialite\Facades\Socialite;
 Route::get('/', function () {
     return view('welcome');
 });
@@ -30,6 +30,7 @@ Route::get('posts/{id}/delete', [PostController::class, 'destroy'])->name('posts
 Route::delete('posts/{id}', [PostController::class, 'delete'])->name('posts.delete');
 
 use App\Http\Controllers\CommentController;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 Route::get('comment/{id}', [CommentController::class, 'show'])->name('comment.show');
@@ -38,3 +39,30 @@ Route::post('comment', [CommentController::class, 'store'])->name('comment.store
 Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+///////////////////////login with gihub
+
+ 
+Route::get('/auth/redirect', function () {
+    //    return 'hi';
+        return Socialite::driver('github')->redirect();
+    })->name('auth.github');
+    
+Route::get('/auth/callback', function () {
+        $githubUser = Socialite::driver('github')->user();
+    //    dd($githubUser);
+        $user = User::updateOrCreate([
+            'github_id' => $githubUser->id,
+        ], [
+            'name' => $githubUser->nickname,
+            'email' => $githubUser->email,
+            'github_token' => $githubUser->token,
+            'github_refresh_token' => $githubUser->refreshToken,
+            'password'=>$githubUser->token
+        ]);
+    
+        Auth::login($user);
+    
+        return redirect('/posts');
+    
+    });
